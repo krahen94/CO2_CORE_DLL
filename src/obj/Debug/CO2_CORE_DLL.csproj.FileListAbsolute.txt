@@ -4,3 +4,4 @@ X:\GitHub\AzurysCore\azurys-core\CO2_CORE_DLL\src\obj\Debug\CO2_CORE_DLL.csprojA
 X:\GitHub\AzurysCore\azurys-core\CO2_CORE_DLL\src\obj\Debug\CO2_CORE_DLL.csproj.CoreCompileInputs.cache
 X:\GitHub\AzurysCore\azurys-core\CO2_CORE_DLL\src\obj\Debug\CO2_CORE_DLL.dll
 X:\GitHub\AzurysCore\azurys-core\CO2_CORE_DLL\src\obj\Debug\CO2_CORE_DLL.pdb
+X:\GitHub\AzurysCore\azurys-core\CO2_CORE_DLL\src\obj\Debug\CO2_CORE_DLL.csproj.CopyComplete
