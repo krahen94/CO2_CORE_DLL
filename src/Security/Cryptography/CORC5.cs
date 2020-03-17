@@ -25,195 +25,125 @@ using System;
 
 namespace CO2_CORE_DLL.Security.Cryptography
 {
-    /// <summary>
-    /// Conquer Online Rivest Cipher 5
-    /// </summary>
     public unsafe class CORC5
     {
-        private const Int32 RC5_32 = 32;
-        private const Int32 RC5_12 = 12;
-        private const Int32 RC5_SUB = (RC5_12 * 2 + 2);
-        private const Int32 RC5_16 = 16;
-        private const Int32 RC5_KEY = (RC5_16 / 4);
+        public const int RC5_32 = 32,
+                         RC5_12 = 12,
+                         RC5_SUB = RC5_12 * 2 + 2,
+                         RC5_16 = 16,
+                         RC5_KEY = RC5_16 / 4;
 
-        private UInt32* BufKey = null;
-        private UInt32* BufSub = null;
-        private UInt32 RC5_PW32 = 0xB7E15163;
-        private UInt32 RC5_QW32 = 0x9E3779B9;
+        public const uint RC5_PW32 = 0xb7e15163, RC5_QW32 = 0x9e3779b9;
 
-        /// <summary>
-        /// Create a new RC5 instance.
-        /// </summary>
-        public CORC5() { }
+        public static readonly byte[] RC5_PASSWORDKEY = new byte[]
+                                                            {
+                                                                0x3c, 0xdc, 0xfe, 0xe8, 0xc4, 0x54, 0xd6, 0x7e,
+                                                                0x16, 0xa6, 0xf8, 0x1a, 0xe8, 0xd0, 0x38, 0xbe
+                                                            };
 
-        /// <summary>
-        /// Create a new RC5 instance with the specified magics numbers. (Shouldn't be used)
-        /// </summary>
-        public CORC5(UInt32 RC5_PW32, UInt32 RC5_QW32)
+        private readonly uint[] _bufKey;
+        private readonly uint[] _bufSub;
+
+        public static uint RotateLeft(uint data, int count)
         {
-            this.RC5_PW32 = RC5_PW32;
-            this.RC5_QW32 = RC5_QW32;
+            count %= 32;
+
+            var high = data >> (32 - count);
+            return (data << count) | high;
         }
 
-        ~CORC5()
+        public static uint RotateRight(uint data, int count)
         {
-            if (BufKey != null)
-                Kernel.free(BufKey);
-            if (BufSub != null)
-                Kernel.free(BufSub);
+            count %= 32;
+
+            var low = data << (32 - count);
+            return (data >> count) | low;
         }
-
-        /// <summary>
-        /// Generates a random key (Key) to use for the algorithm.
-        /// CO2: { 0x3C, 0xDC, 0xFE, 0xE8, 0xC4, 0x54, 0xD6, 0x7E, 0x16, 0xA6, 0xF8, 0x1A, 0xE8, 0xD0, 0x38, 0xBE }
-        /// </summary>
-        public void GenerateKey(Byte* pBufKey, Int32 Length)
+        public CORC5(byte[] key)
         {
-            Kernel.assert(pBufKey != null);
-            Kernel.assert(Length > 0 && Length == RC5_16);
+            _bufKey = new uint[RC5_KEY];
+            _bufSub = new uint[RC5_SUB];
 
-            if (BufKey != null)
-                Kernel.free(BufKey);
-            if (BufSub != null)
-                Kernel.free(BufSub);
-
-            BufKey = (UInt32*)Kernel.malloc(RC5_KEY * sizeof(UInt32));
-            BufSub = (UInt32*)Kernel.malloc(RC5_SUB * sizeof(UInt32));
-
-            for (Int32 z = 0; z < RC5_KEY; z++)
-                BufKey[z] = ((UInt32*)pBufKey)[z];
-
-            BufSub[0] = RC5_PW32;
-            Int32 i, j, k;
-            for (i = 1; i < RC5_SUB; i++)
-                BufSub[i] = BufSub[i - 1] - RC5_QW32;
-
-            UInt32 x, y;
-            i = j = 0;
-            x = y = 0;
-            for (k = 0; k < 3 * Math.Max(RC5_KEY, RC5_SUB); k++)
+            fixed (byte* pKey = key)
             {
-                BufSub[i] = rotl((BufSub[i] + x + y), 3);
-                x = BufSub[i];
-                i = (i + 1) % RC5_SUB;
-                BufKey[j] = rotl((BufKey[j] + x + y), (x + y));
-                y = BufKey[j];
+                fixed (uint* pKey2 = _bufKey)
+                {
+                    Kernel.memcpy(pKey2, pKey, RC5_16);
+                }
+            }
+
+            _bufSub[0] = RC5_PW32;
+            for (var i = 1; i < RC5_SUB; i++)
+            {
+                _bufSub[i] = _bufSub[i - 1] + RC5_QW32;
+            }
+
+            int ii, j;
+            uint x, y;
+            ii = j = 0;
+            x = y = 0;
+            for (var k = 0; k < 3 * Math.Max(RC5_KEY, RC5_SUB); k++)
+            {
+                _bufSub[ii] = RotateLeft(_bufSub[ii] + x + y, 3);
+                x = _bufSub[ii];
+                ii = (ii + 1) % RC5_SUB;
+
+                _bufKey[j] = RotateLeft(_bufKey[j] + x + y, (int)(x + y));
+                y = _bufKey[j];
                 j = (j + 1) % RC5_KEY;
             }
         }
 
-        /// <summary>
-        /// Encrypts data with the CORC5 algorithm.
-        /// </summary>
-        public void Encrypt(Byte* pBuf, Int32 Length)
+        public void Encrypt(void* buffer, int length)
         {
-            Kernel.assert(pBuf != null);
-            Kernel.assert(Length > 0 && Length % 8 == 0);
+            if (length % 8 != 0) throw new ArgumentException("Length must be a multiple of 8!", "length");
 
-            Length = (Length / 8) * 8;
+            var length8 = (length / 8) * 8;
+            if (length8 <= 0) return;
 
-            UInt32* pBufData = (UInt32*)pBuf;
-            for (Int32 k = 0; k < Length / 8; k++)
+            var bufData = (uint*)buffer;
+            for (var k = 0; k < length8 / 8; k++)
             {
-                UInt32 a = pBufData[2 * k];
-                UInt32 b = pBufData[2 * k + 1];
+                uint a = bufData[2 * k];
+                uint b = bufData[2 * k + 1];
 
-                UInt32 le = a + BufSub[0];
-                UInt32 re = b + BufSub[1];
-                for (Int32 i = 1; i <= RC5_12; i++)
+                uint le = a + _bufSub[0];
+                uint re = b + _bufSub[1];
+                for (var i = 1; i <= RC5_12; i++)
                 {
-                    le = rotl((le ^ re), re) + BufSub[2 * i];
-                    re = rotl((re ^ le), le) + BufSub[2 * i + 1];
+                    le = RotateLeft(le ^ re, (int)re) + _bufSub[2 * i];
+                    re = RotateLeft(re ^ le, (int)le) + _bufSub[2 * i + 1];
                 }
 
-                pBufData[2 * k] = le;
-                pBufData[2 * k + 1] = re;
+                bufData[2 * k] = le;
+                bufData[2 * k + 1] = re;
             }
         }
 
-        /// <summary>
-        /// Decrypts data with the CORC5 algorithm.
-        /// </summary>
-        public void Decrypt(Byte* pBuf, Int32 Length)
+        public void Decrypt(void* buffer, int length)
         {
-            Kernel.assert(pBuf != null);
-            Kernel.assert(Length > 0 && Length % 8 == 0);
+            if (length % 8 != 0) throw new ArgumentException("Length must be a multiple of 8!", "length");
 
-            Length = (Length / 8) * 8;
+            var length8 = (length / 8) * 8;
+            if (length8 <= 0) return;
 
-            UInt32* pBufData = (UInt32*)pBuf;
-            for (Int32 k = 0; k < Length / 8; k++)
+            var bufData = (uint*)buffer;
+            for (var k = 0; k < length8 / 8; k++)
             {
-                UInt32 ld = pBufData[2 * k];
-                UInt32 rd = pBufData[2 * k + 1];
-                for (Int32 i = RC5_12; i >= 1; i--)
+                uint ld = bufData[2 * k];
+                uint rd = bufData[2 * k + 1];
+                for (var i = RC5_12; i >= 1; i--)
                 {
-                    rd = rotr((rd - BufSub[2 * i + 1]), ld) ^ ld;
-                    ld = rotr((ld - BufSub[2 * i]), rd) ^ rd;
+                    rd = RotateRight(rd - _bufSub[2 * i + 1], (int)ld) ^ ld;
+                    ld = RotateRight(ld - _bufSub[2 * i], (int)rd) ^ rd;
                 }
 
-                UInt32 b = rd - BufSub[1];
-                UInt32 a = ld - BufSub[0];
+                uint b = rd - _bufSub[1];
+                uint a = ld - _bufSub[0];
 
-                pBufData[2 * k] = a;
-                pBufData[2 * k + 1] = b;
+                bufData[2 * k] = a;
+                bufData[2 * k + 1] = b;
             }
-        }
-
-        /// <summary>
-        /// Generates a random key (Key) to use for the algorithm.
-        /// CO2: { 0x3C, 0xDC, 0xFE, 0xE8, 0xC4, 0x54, 0xD6, 0x7E, 0x16, 0xA6, 0xF8, 0x1A, 0xE8, 0xD0, 0x38, 0xBE }
-        /// </summary>
-        public void GenerateKey(Byte[] BufKey)
-        {
-            Kernel.assert(BufKey != null);
-            Kernel.assert(BufKey.Length > 0 && BufKey.Length == RC5_16);
-
-            Int32 Length = BufKey.Length;
-            fixed (Byte* pBufKey = BufKey)
-                GenerateKey(pBufKey, Length);
-        }
-
-        /// <summary>
-        /// Encrypts data with the CORC5 algorithm.
-        /// </summary>
-        public void Encrypt(ref Byte[] Buf)
-        {
-            Kernel.assert(Buf != null);
-            Kernel.assert(Buf.Length > 0 && Buf.Length % 8 == 0);
-
-            Int32 Length = Buf.Length;
-            fixed (Byte* pBuf = Buf)
-                Encrypt(pBuf, Length);
-        }
-
-        /// <summary>
-        /// Decrypts data with the CORC5 algorithm.
-        /// </summary>
-        public void Decrypt(ref Byte[] Buf)
-        {
-            Kernel.assert(Buf != null);
-            Kernel.assert(Buf.Length > 0 && Buf.Length % 8 == 0);
-
-            Int32 Length = Buf.Length;
-            fixed (Byte* pBuf = Buf)
-                Decrypt(pBuf, Length);
-        }
-
-        private UInt32 rotl(UInt32 Value, UInt32 Count)
-        {
-            Count %= 32;
-
-            UInt32 High = Value >> (32 - (Int32)Count);
-            return (Value << (Int32)Count) | High;
-        }
-
-        private UInt32 rotr(UInt32 Value, UInt32 Count)
-        {
-            Count %= 32;
-
-            UInt32 Low = Value << (32 - (Int32)Count);
-            return (Value >> (Int32)Count) | Low;
         }
     }
 }
