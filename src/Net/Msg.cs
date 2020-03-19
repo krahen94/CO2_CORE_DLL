@@ -41,8 +41,8 @@ namespace CO2_CORE_DLL.Net
         public const Int32 MSG_SEEK_END = 2;
 
         private Encoding Encoding;
-        private Byte* pBuffer;
-        private Int32 Length;
+        protected Byte* pBuffer;
+        protected Int32 Length;
         private Int32 Position;
 
         public String GetEncoding() { return Encoding.WebName; }
@@ -83,6 +83,15 @@ namespace CO2_CORE_DLL.Net
             if (pBuffer != null)
                 Kernel.free(pBuffer);
             pBuffer = null;
+        }
+
+        public void Append(byte[] data)
+        {
+            byte[] temp = new byte[Length];
+            Kernel.memcpy(temp, pBuffer, Length);
+            Kernel.realloc(pBuffer, Length + data.Length);
+            Kernel.memcpy(pBuffer, temp, temp.Length);
+            Kernel.memcpy(pBuffer + temp.Length, data, data.Length);
         }
 
         /// <summary>
@@ -198,22 +207,11 @@ namespace CO2_CORE_DLL.Net
             }
         }
 
-        /// <summary>
-        /// Cast the class to a 8-bits unsigned integer array containing a copy of the buffer.
-        /// </summary>
-        public static implicit operator Byte[](Msg Packet)
+        public virtual byte[] ToBytes()
         {
-            Byte[] Buffer = new Byte[Packet.Length];
-            Kernel.memcpy(Buffer, Packet.pBuffer, Packet.Length);
+            Byte[] Buffer = new Byte[Length];
+            Kernel.memcpy(Buffer, pBuffer, Length);
             return Buffer;
-        }
-
-        /// <summary>
-        /// Cast the class to a pointer to the buffer.
-        /// </summary>
-        public static implicit operator Byte*(Msg Packet)
-        {
-            return Packet.pBuffer;
         }
     }
 }
