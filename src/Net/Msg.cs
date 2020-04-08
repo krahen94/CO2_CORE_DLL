@@ -36,6 +36,8 @@ namespace CO2_CORE_DLL.Net
             public Int16 Type;
         }
 
+        public bool FromClient = false;
+
         public const Int32 MSG_SEEK_SET = 0;
         public const Int32 MSG_SEEK_CUR = 1;
         public const Int32 MSG_SEEK_END = 2;
@@ -157,8 +159,8 @@ namespace CO2_CORE_DLL.Net
         /// </summary>
         public void Write(Byte[] Param)
         { 
-            Kernel.memcpy((pBuffer + Position), Param, Param.Length);
-            Position += Param.Length * sizeof(Byte);
+            Kernel.memcpy((pBuffer + Position), Param, Length);
+            Position += Length * sizeof(Byte);
         }
 
         /// <summary>
@@ -211,6 +213,13 @@ namespace CO2_CORE_DLL.Net
         {
             Byte[] Buffer = new Byte[Length];
             Kernel.memcpy(Buffer, pBuffer, Length);
+            return Buffer;
+        }
+
+        public virtual byte[] ToBytes(int size)
+        {
+            Byte[] Buffer = new Byte[size];
+            Kernel.memcpy(Buffer, pBuffer, size);
             return Buffer;
         }
     }
