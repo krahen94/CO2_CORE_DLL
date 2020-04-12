@@ -4,6 +4,5 @@ X:\GitHub\AzurysCore\azurys-core\CO2_CORE_DLL\src\obj\Debug\netcoreapp3.1\CO2_CO
 X:\GitHub\AzurysCore\azurys-core\CO2_CORE_DLL\src\bin\Debug\netcoreapp3.1\CO2_CORE_DLL_NETCORE.deps.json
 X:\GitHub\AzurysCore\azurys-core\CO2_CORE_DLL\src\bin\Debug\netcoreapp3.1\CO2_CORE_DLL_NETCORE.dll
 X:\GitHub\AzurysCore\azurys-core\CO2_CORE_DLL\src\bin\Debug\netcoreapp3.1\CO2_CORE_DLL_NETCORE.pdb
-X:\GitHub\AzurysCore\azurys-core\CO2_CORE_DLL\src\obj\Debug\netcoreapp3.1\CO2_CORE_DLL_NETCORE.csprojAssemblyReference.cache
 X:\GitHub\AzurysCore\azurys-core\CO2_CORE_DLL\src\obj\Debug\netcoreapp3.1\CO2_CORE_DLL_NETCORE.dll
 X:\GitHub\AzurysCore\azurys-core\CO2_CORE_DLL\src\obj\Debug\netcoreapp3.1\CO2_CORE_DLL_NETCORE.pdb
